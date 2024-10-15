@@ -41,18 +41,14 @@ class DreamsViewController: UIViewController, DreamsViewControllerProtocol {
         return button
     }()
 
-    // Отображение текущей даты
-    private lazy var dateLabel: UILabel = {
-        let label = UILabel()
-        //label.text = formattedDate(currentDate)
-        label.text = "ZHOPA KONYA"
-        label.textColor = .red
-        label.textAlignment = .center
-        //label.isUserInteractionEnabled = true
-        label.translatesAutoresizingMaskIntoConstraints = false
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dateLabelTapped))
-        label.addGestureRecognizer(tapGesture)
-        return label
+    private lazy var dateButton: UIButton = {
+        let button = UIButton()
+        button.setTitle("ZHOPA KONYA", for: .normal)
+        button.setTitleColor(.red, for: .normal)
+        button.titleLabel?.textAlignment = .center
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(dateButtonTapped), for: .touchUpInside)
+        return button
     }()
 
     // Кнопка для перехода к предыдущему дню
@@ -75,7 +71,7 @@ class DreamsViewController: UIViewController, DreamsViewControllerProtocol {
 
     func setupViews() {
         view.addSubview(previousDayButton)
-        view.addSubview(dateLabel)
+        view.addSubview(dateButton)
         view.addSubview(nextDayButton)
         view.addSubview(tableView)
         view.addSubview(startDreamButton)
@@ -83,16 +79,16 @@ class DreamsViewController: UIViewController, DreamsViewControllerProtocol {
 
     func setupConstraints() {
         NSLayoutConstraint.activate([
-            dateLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            dateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            dateButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            dateButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
 
-            previousDayButton.trailingAnchor.constraint(equalTo: dateLabel.leadingAnchor, constant: -8),
-            previousDayButton.centerYAnchor.constraint(equalTo: dateLabel.centerYAnchor),
+            previousDayButton.trailingAnchor.constraint(equalTo: dateButton.leadingAnchor, constant: -8),
+            previousDayButton.centerYAnchor.constraint(equalTo: dateButton.centerYAnchor),
 
-            nextDayButton.leadingAnchor.constraint(equalTo: dateLabel.trailingAnchor, constant: 8),
-            nextDayButton.centerYAnchor.constraint(equalTo: dateLabel.centerYAnchor),
+            nextDayButton.leadingAnchor.constraint(equalTo: dateButton.trailingAnchor, constant: 8),
+            nextDayButton.centerYAnchor.constraint(equalTo: dateButton.centerYAnchor),
 
-            tableView.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 16),
+            tableView.topAnchor.constraint(equalTo: dateButton.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: startDreamButton.topAnchor, constant: -16),
@@ -126,42 +122,67 @@ class DreamsViewController: UIViewController, DreamsViewControllerProtocol {
         }
     }
 
-    // Форматирование даты для отображения
     private func formattedDate(_ date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         return dateFormatter.string(from: date)
     }
 
-    // Обработчик нажатия на метку с датой
     @objc
-    private func dateLabelTapped() {
-        // Открытие календаря для выбора даты
+    private func dateButtonTapped() {
+        // Создаем UIDatePicker
         let datePicker = UIDatePicker()
-        datePicker.datePickerMode = .date
-        datePicker.date = currentDate
+        datePicker.datePickerMode = .date // Установить режим выбора даты
+        datePicker.date = currentDate // Установить текущую дату
+        datePicker.addTarget(self, action: #selector(dateChanged(_:)), for: .valueChanged)
 
-        let alert = UIAlertController(title: "Выберите дату", message: nil, preferredStyle: .actionSheet)
-        alert.view.addSubview(datePicker)
+        // Настраиваем Auto Layout для UIDatePicker
         datePicker.translatesAutoresizingMaskIntoConstraints = false
-        datePicker.centerXAnchor.constraint(equalTo: alert.view.centerXAnchor).isActive = true
-        datePicker.topAnchor.constraint(equalTo: alert.view.topAnchor, constant: 20).isActive = true
+        view.addSubview(datePicker)
 
-        alert.addAction(UIAlertAction(title: "Готово", style: .default, handler: { _ in
-            self.currentDate = datePicker.date
-            self.dateLabel.text = self.formattedDate(self.currentDate)
-            self.fetchSleepRecords() // Обновляем записи сна для выбранной даты
-        }))
+        // Устанавливаем ограничения для datePicker
+        NSLayoutConstraint.activate([
+            datePicker.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            datePicker.heightAnchor.constraint(equalToConstant: 250) // Высота UIPicker
+        ])
 
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil)
+        // Добавляем кнопку "Готово" для закрытия
+        let doneButton = UIButton(type: .system)
+        doneButton.setTitle("Готово", for: .normal)
+        doneButton.addTarget(self, action: #selector(closeDatePicker(datePicker:)), for: .touchUpInside)
+        doneButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(doneButton)
+
+        // Устанавливаем ограничения для doneButton
+        NSLayoutConstraint.activate([
+            doneButton.topAnchor.constraint(equalTo: datePicker.bottomAnchor, constant: 8),
+            doneButton.centerXAnchor.constraint(equalTo: datePicker.centerXAnchor),
+            doneButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
+        ])
+    }
+
+    // Метод для обработки изменения даты
+    @objc
+    private func dateChanged(_ sender: UIDatePicker) {
+        currentDate = sender.date
+    }
+
+    // Метод для закрытия UIDatePicker
+    @objc
+    private func closeDatePicker(datePicker: UIDatePicker) {
+        datePicker.removeFromSuperview() // Удаляем UIDatePicker при нажатии "Готово"
+        // Обновляем текст кнопки с выбранной датой
+        dateButton.setTitle(formattedDate(currentDate), for: .normal)
+        fetchSleepRecords() // Обновляем записи сна для выбранной даты
     }
 
     // Обработчик нажатия на кнопку "Предыдущий день"
     @objc
     private func previousDayTapped() {
         currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
-        dateLabel.text = formattedDate(currentDate)
+        dateButton.setTitle(formattedDate(currentDate), for: .normal)
         fetchSleepRecords()
     }
 
@@ -169,7 +190,7 @@ class DreamsViewController: UIViewController, DreamsViewControllerProtocol {
     @objc
     private func nextDayTapped() {
         currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
-        dateLabel.text = formattedDate(currentDate)
+        dateButton.setTitle(formattedDate(currentDate), for: .normal)
         fetchSleepRecords()
     }
 
